@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WatchX - Premium Watches & Repair</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        transition: background 0.5s, color 0.5s;
+        background-color: #0f172a; /* Dark mode background */
+        color: #f1f5f9; /* Light text for dark mode */
+      }
+      .glass {
+        backdrop-filter: blur(20px);
+        background-color: rgba(255, 255, 255, 0.1);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+      }
+      .scrollbar-hide::-webkit-scrollbar {
+        display: none;
+      }
+      .watch-card {
+        transition: transform 0.3s, box-shadow 0.3s;
+      }
+      .watch-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      }
+      .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+      }
+      .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+      .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: 0.4s;
+        border-radius: 34px;
+      }
+      .slider:before {
+        position: absolute;
+        content: "🌜";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: 0.4s;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+      }
+      input:checked + .slider {
+        background-color: #2196f3;
+      }
+      input:checked + .slider:before {
+        transform: translateX(26px);
+        content: "🌞";
+      }
+      .full-page {
+        display: none;
+      }
+      .full-page.active {
+        display: block;
+      }
+      .footer-bg {
+        background: linear-gradient(
+          135deg,
+          rgba(15, 23, 42, 0.9) 0%,
+          rgba(15, 23, 42, 0.95) 100%
+        );
+      }
+      .dark .footer-bg {
+        background: linear-gradient(
+          135deg,
+          rgba(30, 41, 59, 0.9) 0%,
+          rgba(15, 23, 42, 0.95) 100%
+        );
+      }
+      .hero-image {
+        width: 100%;
+        height: 400px;
+        object-fit: cover;
+        object-position: center;
+      }
+      .hero-slider {
+        position: relative;
+        width: 100%;
+        height: 400px;
+        overflow: hidden;
+        border-radius: 1rem;
+      }
+      .hero-slide {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0;
+        transition: opacity 1s ease-in-out;
+      }
+      .hero-slide.active {
+        opacity: 1;
+      }
+      .hero-slide img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .hero-content {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.4);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        text-align: center;
+        padding: 2rem;
+      }
+    </style>
+    <script>
+      const cart = {
+        Luxury: [],
+        CR7: [],
+        Casual: [],
+        Sports: [],
+        Women: [],
+      };
+
+      function addToCart(section, watch) {
+        cart[section].push(watch);
+        updateCart();
+      }
+
+      function updateCart() {
+        const cartList = document.getElementById("cartItems");
+        cartList.innerHTML = Object.entries(cart)
+          .map(([section, items]) => {
+            if (items.length === 0) return "";
+            return `<div class='mb-4'><strong>${section} Watches:</strong><ul class='pl-4'>${items
+              .map((i) => `<li>${i}</li>`)
+              .join("")}</ul></div>`;
+          })
+          .join("");
+        document.getElementById("cartModal").classList.remove("hidden");
+      }
+
+      function closeCart() {
+        document.getElementById("cartModal").classList.add("hidden");
+      }
+
+      function scrollToSection(id) {
+        document.getElementById(id).scrollIntoView({ behavior: "smooth" });
+      }
+
+      function toggleThemeToggle(checkbox) {
+        const html = document.documentElement;
+        const isDark = !checkbox.checked;
+        html.classList.toggle("dark", isDark);
+        document.body.classList.toggle("bg-slate-900", isDark);
+        document.body.classList.toggle("text-slate-100", isDark);
+        document.body.classList.toggle("bg-white", !isDark);
+        document.body.classList.toggle("text-slate-900", !isDark);
+      }
+
+      function showFullPage(category) {
+        document.querySelectorAll(".full-page").forEach((page) => {
+          page.classList.remove("active");
+        });
+        document.getElementById(`${category}-full`).classList.add("active");
+        document.getElementById("main-content").classList.add("hidden");
+      }
+
+      function backToMain() {
+        document.querySelectorAll(".full-page").forEach((page) => {
+          page.classList.remove("active");
+        });
+        document.getElementById("main-content").classList.remove("hidden");
+        window.location.hash = "";
+      }
+
+      window.addEventListener("hashchange", function () {
+        const hash = window.location.hash.substring(1);
+        if (hash.endsWith("-full")) {
+          const category = hash.replace("-full", "");
+          showFullPage(category);
+        } else {
+          backToMain();
+        }
+      });
+
+      window.addEventListener("DOMContentLoaded", function () {
+        const hash = window.location.hash.substring(1);
+        if (hash.endsWith("-full")) {
+          const category = hash.replace("-full", "");
+          showFullPage(category);
+        }
+        // Initialize dark mode correctly
+        document.querySelector(".switch input").checked = false;
+
+        // Initialize hero slider
+        let currentSlide = 0;
+        const slides = document.querySelectorAll(".hero-slide");
+        slides[currentSlide].classList.add("active");
+
+        setInterval(() => {
+          slides[currentSlide].classList.remove("active");
+          currentSlide = (currentSlide + 1) % slides.length;
+          slides[currentSlide].classList.add("active");
+        }, 5000);
+      });
+
+      // Watch images data
+      const luxuryWatches = [
+        {
+          name: "Rolex Daytona",
+          price: "₹1,250,000",
+          img: "https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=880&q=80",
+        },
+        {
+          name: "Patek Philippe Nautilus",
+          price: "₹2,800,000",
+          img: "https://images.unsplash.com/photo-1551818255-e6e10975bc17?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=772&q=80",
+        },
+        {
+          name: "Audemars Piguet Royal Oak",
+          price: "₹1,950,000",
+          img: "https://images.unsplash.com/photo-1611591437281-460914d15503?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
+        },
+        {
+          name: "Jaeger-LeCoultre Reverso",
+          price: "₹950,000",
+          img: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Vacheron Constantin",
+          price: "₹3,200,000",
+          img: "https://images.unsplash.com/photo-1609587312208-cea54be969e7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Breguet Classique",
+          price: "₹1,750,000",
+          img: "https://images.unsplash.com/photo-1611591437963-25cad0c4efc1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
+        },
+      ];
+
+      const cr7Watches = [
+        {
+          name: "CR7 Chronograph Gold",
+          price: "₹1,500,000",
+          img: "https://images.unsplash.com/photo-1557531365-e8b9c3d330a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80",
+        },
+        {
+          name: "CR7 Limited Edition",
+          price: "₹2,000,000",
+          img: "https://images.unsplash.com/photo-1524805444758-089113d48a6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=688&q=80",
+        },
+        {
+          name: "CR7 Diamond Edition",
+          price: "₹3,500,000",
+          img: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "CR7 Legacy Edition",
+          price: "₹2,500,000",
+          img: "https://images.unsplash.com/photo-1548169874-53e85f753f1e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+      ];
+
+      const casualWatches = [
+        {
+          name: "Timex Weekender",
+          price: "₹5,500",
+          img: "https://images.unsplash.com/photo-1524805444758-089113d48a6d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=688&q=80",
+        },
+        {
+          name: "Seiko 5 Sports",
+          price: "₹8,500",
+          img: "https://images.unsplash.com/photo-1548169874-53e85f753f1e?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Casio Edifice",
+          price: "₹7,200",
+          img: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Fossil Grant",
+          price: "₹9,800",
+          img: "https://images.unsplash.com/photo-1557531365-e8b9c3d330a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80",
+        },
+      ];
+
+      const sportsWatches = [
+        {
+          name: "Garmin Forerunner",
+          price: "₹7,500",
+          img: "https://images.unsplash.com/photo-1579586337278-3befd40fd17a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1472&q=80",
+        },
+        {
+          name: "Suunto 9 Baro",
+          price: "₹9,200",
+          img: "https://images.unsplash.com/photo-1523275335684-37898b6baf30?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1399&q=80",
+        },
+        {
+          name: "Casio G-Shock",
+          price: "₹8,700",
+          img: "https://images.unsplash.com/photo-1539874754764-5a96559165b0?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Polar Vantage",
+          price: "₹11,500",
+          img: "https://images.unsplash.com/photo-1557531365-e8b9c3d330a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80",
+        },
+      ];
+
+      const womenWatches = [
+        {
+          name: "Michael Kors Parker",
+          price: "₹6,500",
+          img: "https://images.unsplash.com/photo-1542496658-e33a6d0d50f6?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Kate Spade Scallop",
+          price: "₹8,200",
+          img: "https://images.unsplash.com/photo-1609587312208-cea54be969e7?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+        },
+        {
+          name: "Fossil Carlie",
+          price: "₹7,800",
+          img: "https://images.unsplash.com/photo-1611591437963-25cad0c4efc1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=687&q=80",
+        },
+        {
+          name: "Anne Klein Sport",
+          price: "₹9,500",
+          img: "https://images.unsplash.com/photo-1557531365-e8b9c3d330a9?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=764&q=80",
+        },
+      ];
+
+      function createWatchCard(w, key) {
+        return `
+          <div class='glass min-w-[220px] p-4 rounded-2xl watch-card'>
+            <img src='${w.img}' class='rounded-xl w-full h-40 object-cover mb-3' alt='${w.name}'>
+            <h3 class='text-lg font-semibold'>${w.name}</h3>
+            <p class='text-sm text-slate-300 mb-2'>${w.price}</p>
+            <button onclick="addToCart('${key}', '${w.name}')" class='bg-white text-black px-4 py-1 rounded w-full'>Add to Cart</button>
+          </div>`;
+      }
+    </script>
+  </head>
+  <body>
+    <!-- Header -->
+    <header class="flex justify-between items-center px-6 py-4 mb-6">
+      <h1 class="text-3xl font-serif font-bold">WatchX</h1>
+      <div class="flex gap-4 items-center">
+        <label class="switch">
+          <input type="checkbox" onchange="toggleThemeToggle(this)" checked />
+          <span class="slider"></span>
+        </label>
+        <button
+          onclick="updateCart()"
+          title="Cart"
+          class="flex items-center gap-1"
+        >
+          🛒 <span class="text-sm">Cart</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Cart Modal -->
+    <div
+      id="cartModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50"
+    >
+      <div class="glass p-6 w-96 max-w-full rounded-2xl relative text-white">
+        <button class="absolute top-2 right-3 text-xl" onclick="closeCart()">
+          ✖️
+        </button>
+        <h2 class="text-xl font-bold mb-4">Cart Items</h2>
+        <div id="cartItems" class="text-sm space-y-2"></div>
+      </div>
+    </div>
+
+    <!-- Main Content -->
+    <div id="main-content">
+      <!-- Hero Section -->
+      <section class="relative text-center px-6 mb-10">
+        <div class="hero-slider">
+          <div class="hero-slide">
+            <img
+              src="https://images.unsplash.com/photo-1523170335258-f5ed11844a49?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1500&q=80"
+              alt="Luxury Watch Collection"
+            />
+          </div>
+          <div class="hero-slide">
+            <img
+              src="https://images.unsplash.com/photo-1551818255-e6e10975bc17?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1500&q=80"
+              alt="Premium Watch Selection"
+            />
+          </div>
+          <div class="hero-content">
+            <h1 class="text-4xl font-bold mb-4">
+              Timeless Elegance. Perfectly Engineered.
+            </h1>
+            <div class="flex justify-center gap-4">
+              <button
+                onclick="scrollToSection('watches')"
+                class="bg-white text-black px-6 py-2 rounded-full font-semibold"
+              >
+                Shop Now
+              </button>
+              <button
+                onclick="scrollToSection('repair')"
+                class="border border-white px-6 py-2 rounded-full font-semibold text-white"
+              >
+                Book Repair
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div id="watches"></div>
+
+      <!-- Watch Sections -->
+      <section class="px-6 mb-16">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Luxury Watches</h2>
+          <button
+            onclick="window.location.hash='luxury-full'"
+            class="text-sm bg-white text-black px-3 py-1 rounded"
+          >
+            View All
+          </button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 scrollbar-hide">
+          <script>
+            luxuryWatches.slice(0, 6).forEach((w) => {
+              document.write(createWatchCard(w, "Luxury"));
+            });
+          </script>
+        </div>
+      </section>
+
+      <section class="px-6 mb-16">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Special Collection - CR7 Watches</h2>
+          <button
+            onclick="window.location.hash='cr7-full'"
+            class="text-sm bg-white text-black px-3 py-1 rounded"
+          >
+            View All
+          </button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 scrollbar-hide">
+          <script>
+            cr7Watches.slice(0, 4).forEach((w) => {
+              document.write(createWatchCard(w, "CR7"));
+            });
+          </script>
+        </div>
+      </section>
+
+      <section class="px-6 mb-16">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Casual Watches</h2>
+          <button
+            onclick="window.location.hash='casual-full'"
+            class="text-sm bg-white text-black px-3 py-1 rounded"
+          >
+            View All
+          </button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 scrollbar-hide">
+          <script>
+            casualWatches.slice(0, 4).forEach((w) => {
+              document.write(createWatchCard(w, "Casual"));
+            });
+          </script>
+        </div>
+      </section>
+
+      <section class="px-6 mb-16">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Sports Watches</h2>
+          <button
+            onclick="window.location.hash='sports-full'"
+            class="text-sm bg-white text-black px-3 py-1 rounded"
+          >
+            View All
+          </button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 scrollbar-hide">
+          <script>
+            sportsWatches.slice(0, 4).forEach((w) => {
+              document.write(createWatchCard(w, "Sports"));
+            });
+          </script>
+        </div>
+      </section>
+
+      <section class="px-6 mb-16">
+        <div class="flex justify-between items-center mb-4">
+          <h2 class="text-2xl font-bold">Women Watches</h2>
+          <button
+            onclick="window.location.hash='women-full'"
+            class="text-sm bg-white text-black px-3 py-1 rounded"
+          >
+            View All
+          </button>
+        </div>
+        <div class="flex overflow-x-auto gap-4 scrollbar-hide">
+          <script>
+            womenWatches.slice(0, 4).forEach((w) => {
+              document.write(createWatchCard(w, "Women"));
+            });
+          </script>
+        </div>
+      </section>
+
+      <!-- Repair Booking Form -->
+      <div id="repair"></div>
+      <section class="px-6 my-16">
+        <h2 class="text-2xl font-bold text-center mb-6">Book a Watch Repair</h2>
+        <div class="max-w-xl mx-auto glass p-6 rounded-2xl">
+          <form class="space-y-4">
+            <input
+              type="text"
+              placeholder="Full Name"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            />
+            <input
+              type="email"
+              placeholder="Email Address"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            />
+            <input
+              type="tel"
+              placeholder="Phone Number"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            />
+            <textarea
+              placeholder="Describe the issue"
+              rows="4"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            ></textarea>
+            <button
+              type="submit"
+              class="bg-white text-black px-6 py-2 rounded w-full font-semibold"
+            >
+              Submit Request
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Review Submission Form -->
+      <section class="px-6 my-16">
+        <h2 class="text-2xl font-bold text-center mb-6">Write a Review</h2>
+        <div class="max-w-xl mx-auto glass p-6 rounded-2xl">
+          <form class="space-y-4">
+            <input
+              type="text"
+              placeholder="Your Name"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            />
+            <input
+              type="email"
+              placeholder="Your Email"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            />
+            <textarea
+              rows="4"
+              placeholder="Your Review"
+              class="w-full p-2 rounded bg-slate-100 text-black"
+            ></textarea>
+            <button
+              type="submit"
+              class="bg-white text-black px-6 py-2 rounded w-full font-semibold"
+            >
+              Submit Review
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <!-- Customer Reviews -->
+      <section class="px-6 my-16">
+        <h2 class="text-2xl font-bold text-center mb-6">Customer Reviews</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div class="glass p-6 rounded-2xl">
+            <p class="italic">
+              "WatchX offers a stunning selection of watches. Their luxury range
+              is top-notch!"
+            </p>
+            <div class="text-yellow-400 mt-2">★★★★★</div>
+            <p class="mt-2 text-sm text-slate-300">- Ayesha R.</p>
+          </div>
+          <div class="glass p-6 rounded-2xl">
+            <p class="italic">
+              "Quick repair turnaround and friendly staff. Very satisfied."
+            </p>
+            <div class="text-yellow-400 mt-2">★★★★☆</div>
+            <p class="mt-2 text-sm text-slate-300">- Rohan M.</p>
+          </div>
+          <div class="glass p-6 rounded-2xl">
+            <p class="italic">
+              "Beautiful UI and amazing hover animations. Felt premium shopping
+              here."
+            </p>
+            <div class="text-yellow-400 mt-2">★★★★★</div>
+            <p class="mt-2 text-sm text-slate-300">- Nisha T.</p>
+          </div>
+          <div class="glass p-6 rounded-2xl">
+            <p class="italic">
+              "Wide variety and excellent customer service. 5 stars!"
+            </p>
+            <div class="text-yellow-400 mt-2">★★★★★</div>
+            <p class="mt-2 text-sm text-slate-300">- Harsh S.</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Footer -->
+      <footer class="footer-bg text-center text-sm text-slate-300 py-8 mt-12">
+        <div class="max-w-6xl mx-auto px-6">
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <div>
+              <h3 class="text-lg font-semibold mb-4">Shop</h3>
+              <ul class="space-y-2">
+                <li><a href="#" class="hover:text-white">New Arrivals</a></li>
+                <li><a href="#" class="hover:text-white">Best Sellers</a></li>
+                <li>
+                  <a href="#" class="hover:text-white">Luxury Collection</a>
+                </li>
+                <li>
+                  <a href="#" class="hover:text-white">Special Editions</a>
+                </li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold mb-4">Services</h3>
+              <ul class="space-y-2">
+                <li><a href="#" class="hover:text-white">Watch Repair</a></li>
+                <li>
+                  <a href="#" class="hover:text-white">Battery Replacement</a>
+                </li>
+                <li><a href="#" class="hover:text-white">Customization</a></li>
+                <li><a href="#" class="hover:text-white">Valuation</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold mb-4">Company</h3>
+              <ul class="space-y-2">
+                <li><a href="#" class="hover:text-white">About Us</a></li>
+                <li><a href="#" class="hover:text-white">Our Story</a></li>
+                <li><a href="#" class="hover:text-white">Careers</a></li>
+                <li><a href="#" class="hover:text-white">Press</a></li>
+              </ul>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold mb-4">Contact</h3>
+              <ul class="space-y-2">
+                <li>123 Timepiece Street</li>
+                <li>Mumbai, India 400001</li>
+                <li>+91 99999 99999</li>
+                <li>support@watchx.com</li>
+              </ul>
+            </div>
+          </div>
+          <div class="pt-6 border-t border-slate-700">
+            <p>&copy; 2025 WatchX. All rights reserved.</p>
+            <div class="flex justify-center space-x-6 mt-4">
+              <a href="#" class="hover:text-white">Privacy Policy</a>
+              <a href="#" class="hover:text-white">Terms of Service</a>
+              <a href="#" class="hover:text-white">Shipping & Returns</a>
+            </div>
+            <div class="flex justify-center space-x-4 mt-4">
+              <a href="#" class="hover:text-white">Instagram</a>
+              <a href="#" class="hover:text-white">Facebook</a>
+              <a href="#" class="hover:text-white">Twitter</a>
+            </div>
+          </div>
+        </div>
+      </footer>
+    </div>
+
+    <!-- Full Page Views -->
+    <div id="luxury-full" class="full-page">
+      <div class="px-6 py-4">
+        <button onclick="backToMain()" class="mb-4 flex items-center gap-1">
+          ← Back
+        </button>
+        <h2 class="text-3xl font-bold mb-6">Luxury Watches</h2>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+          <script>
+            luxuryWatches.forEach((w) => {
+              document.write(createWatchCard(w, "Luxury"));
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <div id="cr7-full" class="full-page">
+      <div class="px-6 py-4">
+        <button onclick="backToMain()" class="mb-4 flex items-center gap-1">
+          ← Back
+        </button>
+        <h2 class="text-3xl font-bold mb-6">CR7 Special Collection</h2>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+          <script>
+            cr7Watches.forEach((w) => {
+              document.write(createWatchCard(w, "CR7"));
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <div id="casual-full" class="full-page">
+      <div class="px-6 py-4">
+        <button onclick="backToMain()" class="mb-4 flex items-center gap-1">
+          ← Back
+        </button>
+        <h2 class="text-3xl font-bold mb-6">Casual Watches</h2>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+          <script>
+            casualWatches.forEach((w) => {
+              document.write(createWatchCard(w, "Casual"));
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <div id="sports-full" class="full-page">
+      <div class="px-6 py-4">
+        <button onclick="backToMain()" class="mb-4 flex items-center gap-1">
+          ← Back
+        </button>
+        <h2 class="text-3xl font-bold mb-6">Sports Watches</h2>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+          <script>
+            sportsWatches.forEach((w) => {
+              document.write(createWatchCard(w, "Sports"));
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+
+    <div id="women-full" class="full-page">
+      <div class="px-6 py-4">
+        <button onclick="backToMain()" class="mb-4 flex items-center gap-1">
+          ← Back
+        </button>
+        <h2 class="text-3xl font-bold mb-6">Women Watches</h2>
+        <div
+          class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6"
+        >
+          <script>
+            womenWatches.forEach((w) => {
+              document.write(createWatchCard(w, "Women"));
+            });
+          </script>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
